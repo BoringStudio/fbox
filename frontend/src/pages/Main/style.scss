@@ -1,0 +1,33 @@
+@import '../../styles/colors.scss';
+
+.content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-evenly;
+
+  .panel {
+    width: 50%;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    $center-padding: 2em;
+
+    &--left {
+      align-items: flex-end;
+      padding-right: $center-padding;
+      background-color: $color-secondary;
+      color: $color-font-black;
+    }
+
+    &--right {
+      align-items: flex-start;
+      padding-left: $center-padding;
+      background-color: $color-primary;
+      color: $color-font-white;
+    }
+  }
+}
