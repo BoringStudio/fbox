@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["LazyMechanic <AsharnRus@gmail.com>"]
 edition = "2018"
 
+[dependencies.tiny-bip39]
+git = "https://github.com/BoringStudio/tiny-bip39"
+
 [dependencies]
 async-trait = "0.1"
 anyhow = "1.0"

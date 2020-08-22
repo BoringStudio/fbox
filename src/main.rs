@@ -1,7 +1,10 @@
 mod api;
 mod prelude;
+mod services;
 mod settings;
 
+use crate::api::Context;
+use crate::services::sessions::SessionService;
 use prelude::*;
 
 #[tokio::main]
@@ -12,8 +15,14 @@ async fn main() -> Result<()> {
 
 async fn run() -> Result<()> {
     let settings = Arc::new(Settings::new()?);
+    let session_service = Arc::new(SessionService::new(settings.clone()));
 
-    tokio::spawn(api::serve(settings.clone()));
+    let ctx = Context {
+        settings: settings.clone(),
+        session_service,
+    };
+
+    tokio::spawn(api::serve(ctx));
     log::debug!("server is listening on {:?}", settings.server_addr);
 
     futures::future::pending().await

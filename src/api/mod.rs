@@ -1,14 +1,13 @@
 mod controllers;
+mod resp;
 
 use warp::Filter;
 
 use crate::prelude::*;
+use crate::services::sessions::SessionService;
 
-pub async fn serve(settings: Arc<Settings>) {
-    let ctx = Context {
-        settings: settings.clone(),
-    };
-
+pub async fn serve(ctx: Context) {
+    let server_addr = ctx.settings.server_addr;
     let api = filters::api_v1(ctx);
     let cors = warp::cors()
         .allow_any_origin()
@@ -16,14 +15,13 @@ pub async fn serve(settings: Arc<Settings>) {
         .allow_methods(vec!["GET", "OPTIONS", "POST", "DELETE", "PUT"]);
     let log = warp::log("fbox");
 
-    warp::serve(api.with(log).with(cors))
-        .run(settings.server_addr)
-        .await
+    warp::serve(api.with(log).with(cors)).run(server_addr).await
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Context {
     pub settings: Arc<Settings>,
+    pub session_service: Arc<SessionService>,
 }
 
 mod filters {
@@ -33,7 +31,7 @@ mod filters {
     use warp::Filter;
 
     pub fn api_v1(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
-        warp::path!("v1").and(post_sessions(ctx)).boxed()
+        warp::path("v1").and(post_sessions(ctx)).boxed()
     }
 
     fn post_sessions(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
