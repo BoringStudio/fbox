@@ -1,7 +1,7 @@
 @import '../../styles/shared/colors';
 
 .session-code-form {
-  width: 13em;
+  width: 14em;
 
   display: flex;
   flex-direction: column;
@@ -27,6 +27,7 @@
 
   .description {
     margin-bottom: 0.5em;
+    text-align: left;
   }
 
   .session-code-input {
