@@ -1,4 +1,5 @@
 @import '../../styles/shared/colors';
+@import '../../styles/shared/media';
 
 .content {
   width: 100%;
@@ -14,18 +15,34 @@
     flex-direction: column;
     justify-content: center;
 
-    $center-padding: 2em;
+    padding: 2em;
 
     &--left {
       align-items: flex-end;
-      padding-right: $center-padding;
       background-color: $color-secondary;
     }
 
     &--right {
       align-items: flex-start;
-      padding-left: $center-padding;
       background-color: $color-primary;
+    }
+
+    @include media-down(xl) {
+      &--left,
+      &--right {
+        align-items: center;
+      }
+    }
+
+    @include media-down(md) {
+      &--left {
+        display: none;
+      }
+
+      &--right {
+        width: 100%;
+        padding: 0;
+      }
     }
   }
 }

@@ -1,4 +1,5 @@
 @import '../../styles/shared/colors';
+@import '../../styles/shared/media';
 
 .session-qr-code {
   max-width: 256px;
@@ -20,5 +21,13 @@
 
   .raw-code {
     text-align: right;
+  }
+
+  @include media-down(xl) {
+    font-size: 1em;
+
+    .raw-code {
+      text-align: center;
+    }
   }
 }

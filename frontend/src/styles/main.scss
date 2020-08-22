@@ -15,7 +15,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.3;
   font-size: 1.2em;
-  box-sizing: border-box;
 }
 
 code {
@@ -30,4 +29,8 @@ code {
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+}
+
+* {
+  box-sizing: border-box;
 }

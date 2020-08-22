@@ -32,7 +32,7 @@ export const SessionCodeForm = (props: SessionCodeFormProps) => {
         className="session-code-input input"
         type="text"
         value={value}
-        onInput={event => setValue(event.currentTarget.value)}
+        onChange={event => setValue(event.currentTarget.value)}
       />
       <button className="button" onClick={onJoinButtonClick}>
         {LOCALIZATION.joinButton}
