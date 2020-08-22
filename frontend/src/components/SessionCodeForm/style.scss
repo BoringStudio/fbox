@@ -1,5 +1,4 @@
-@import '../../styles/colors.scss';
-@import '../../styles/inputs.scss';
+@import '../../styles/shared/colors';
 
 .session-code-form {
   width: 13em;
@@ -11,6 +10,8 @@
 
   font-size: 1.3em;
   font-weight: bold;
+
+  color: $color-font-white;
 
   .title {
     text-align: center;
@@ -29,11 +30,6 @@
   }
 
   .session-code-input {
-    @extend .input;
     margin-bottom: 0.5em;
-  }
-
-  .join-button {
-    @extend .button;
   }
 }

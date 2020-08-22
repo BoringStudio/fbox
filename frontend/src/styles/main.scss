@@ -1,5 +1,5 @@
-@import './reset.scss';
-@import './inputs.scss';
+@import './reset';
+@import './inputs';
 
 html,
 body,
@@ -8,9 +8,8 @@ body,
 }
 
 body {
-  font-family: 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans',
+    'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.3;

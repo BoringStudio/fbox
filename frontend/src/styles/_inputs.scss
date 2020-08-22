@@ -1,5 +1,5 @@
-@import './import-once.scss';
-@import './colors.scss';
+@import './shared/import-once';
+@import './shared/colors';
 
 @include exports('inputs') {
   .input {

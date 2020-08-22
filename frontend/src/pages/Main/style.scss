@@ -1,4 +1,4 @@
-@import '../../styles/colors.scss';
+@import '../../styles/shared/colors';
 
 .content {
   width: 100%;
@@ -20,14 +20,12 @@
       align-items: flex-end;
       padding-right: $center-padding;
       background-color: $color-secondary;
-      color: $color-font-black;
     }
 
     &--right {
       align-items: flex-start;
       padding-left: $center-padding;
       background-color: $color-primary;
-      color: $color-font-white;
     }
   }
 }

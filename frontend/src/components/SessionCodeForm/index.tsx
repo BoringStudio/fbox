@@ -2,17 +2,41 @@ import React from 'react';
 
 import './style.scss';
 
-export const SessionCodeForm = () => {
+const LOCALIZATION = {
+  title: 'FBox',
+  description:
+    'Scan QR code on the left with your second device or enter mnemonics below',
+  joinButton: 'Join'
+};
+
+type SessionCodeFormProps = {
+  onSubmit: (input: string) => void;
+};
+
+export const SessionCodeForm = (props: SessionCodeFormProps) => {
+  const { onSubmit } = props;
+
+  const [value, setValue] = React.useState<string>('');
+
+  const onJoinButtonClick = () => {
+    setValue('');
+    onSubmit(value);
+  };
+
   return (
     <div className="session-code-form">
-      <div className="title noselect">FBox</div>
+      <div className="title noselect">{LOCALIZATION.title}</div>
       <hr />
-      <div className="description noselect">
-        Scan QR code on the left with your second device or enter mnemonics
-        below
-      </div>
-      <input className="session-code-input" type="text"></input>
-      <button className="join-button">Join</button>
+      <div className="description noselect">{LOCALIZATION.description}</div>
+      <input
+        className="session-code-input input"
+        type="text"
+        value={value}
+        onInput={event => setValue(event.currentTarget.value)}
+      />
+      <button className="button" onClick={onJoinButtonClick}>
+        {LOCALIZATION.joinButton}
+      </button>
     </div>
   );
 };

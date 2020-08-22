@@ -1,0 +1,24 @@
+@import '../../styles/shared/colors';
+
+.session-qr-code {
+  max-width: 256px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+
+  padding: 0.5em;
+
+  font-size: 1.3em;
+  font-weight: bold;
+
+  color: $color-font-black;
+
+  .qr-code {
+    margin-bottom: 0.5em;
+  }
+
+  .raw-code {
+    text-align: right;
+  }
+}
