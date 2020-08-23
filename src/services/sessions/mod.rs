@@ -1,15 +1,21 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+mod websocket;
 
 use bip39::{Language, Mnemonic, MnemonicType, Seed};
-use futures::{FutureExt, StreamExt};
-use warp::ws::{self, WebSocket};
+use futures::StreamExt;
+use warp::ws::WebSocket;
 
+use self::websocket::Event;
 use crate::prelude::*;
 
-pub struct Session {}
+#[derive(Debug)]
+pub struct Session {
+    seed: Seed,
+    connections: HashMap<usize, Arc<Connection>>,
+}
 
 pub struct SessionService {
     settings: Arc<Settings>,
+    pending_connections: ArcRwLock<HashMap<String, (Arc<Connection>, Mnemonic)>>,
     sessions: ArcRwLock<HashMap<Seed, ArcRwLock<Session>>>,
 }
 
@@ -17,135 +23,133 @@ impl SessionService {
     pub fn new(settings: Arc<Settings>) -> Self {
         Self {
             settings,
+            pending_connections: Arc::new(Default::default()),
             sessions: Arc::new(Default::default()),
         }
     }
 
     pub async fn handle_connection(&self, websocket: WebSocket) {
-        let (conn, mut rx) = init_connection(websocket);
+        let (conn, mut rx) = websocket::init_connection(websocket);
+
+        // add connection to pending
+        let local_phrase = {
+            // generate mnemonic
+            let mut mnemonic = self.generate_mnemonic();
+
+            let mut pending_connections = self.pending_connections.write().await;
+
+            // prevent collisions
+            loop {
+                if pending_connections.contains_key(mnemonic.phrase()) {
+                    mnemonic = self.generate_mnemonic();
+                } else {
+                    break;
+                }
+            }
+
+            let phrase = mnemonic.phrase().to_owned();
+            pending_connections.insert(phrase.clone(), (conn.clone(), mnemonic));
+
+            phrase
+        };
+
+        conn.send_external(&WsResponse::Created {
+            phrase: local_phrase.clone(),
+        });
+
+        log::debug!("create ws connection: {}", conn.id());
+
+        let mut session: Option<ArcRwLock<Session>> = None;
 
         while let Some(request) = rx.next().await {
             log::debug!("received request: {:?}", request);
 
-            conn.tx.send(&WsResponse::OnCreated {
-                phrase: self.generate_mnemonic().await.into_phrase(),
-            });
+            match request {
+                Event::External(WsRequest::Connect { phrase }) => {
+                    const MIN_PHRASE_LEN: usize = 6 * 3 + 5; // 6 words with 3 letters + 5 spaces
+                    const MAX_PHRASE_LEN: usize = 6 * 8 + 5; // 6 words with 8 letters + 5 spaces
+                    if phrase.len() < MIN_PHRASE_LEN
+                        || phrase.len() > MAX_PHRASE_LEN
+                        || phrase == local_phrase
+                    {
+                        conn.send_external(&WsResponse::PeerNotFound);
+                        continue;
+                    }
+
+                    // find peer
+                    let pending_connections = self.pending_connections.read().await;
+                    let (_peer, mnemonics) = match pending_connections.get(&phrase) {
+                        Some(entry) => entry,
+                        None => {
+                            conn.send_external(&WsResponse::PeerNotFound);
+                            continue;
+                        }
+                    };
+
+                    if let Some(session) = session.as_ref() {
+                        let session = session.read().await;
+
+                        conn.send_external(&WsResponse::Connected {
+                            seed: encode_seed(&session.seed),
+                        })
+                    } else {
+                        let seed = Seed::new(mnemonics, &self.settings.password);
+
+                        conn.send_external(&WsResponse::Connected {
+                            seed: encode_seed(&seed),
+                        });
+                    }
+                }
+                Event::Internal(InternalMessage::SessionCreated(new_session)) => {
+                    session = Some(new_session)
+                }
+            };
         }
+
+        // remove connection from pending
+        let is_still_pending = self
+            .pending_connections
+            .read()
+            .await
+            .contains_key(&local_phrase);
+        if is_still_pending {
+            let mut pending_connections = self.pending_connections.write().await;
+            pending_connections.remove(&local_phrase);
+        }
+
+        //
+        log::debug!("drop ws connection: {}", conn.id());
     }
 
-    pub async fn generate_mnemonic(&self) -> Mnemonic {
-        let kind = MnemonicType::Words6;
-        let lang = Language::English;
-        Mnemonic::new(kind, lang)
+    pub fn generate_mnemonic(&self) -> Mnemonic {
+        Mnemonic::new(MnemonicType::Words6, Language::English)
     }
 }
 
-fn init_connection(websocket: WebSocket) -> (Connection, ClientRx<WsRequest>) {
-    let (ws_tx, ws_rx) = websocket.split();
-    let (tx, rx) = mpsc::unbounded_channel();
-
-    tokio::task::spawn(rx.forward(ws_tx).map(|result| {
-        if let Err(e) = result {
-            log::trace!("websocket close error: {}", e);
-        }
-    }));
-
-    let connection = Connection::new(tx.into());
-    let client_rx = ClientRx::<WsRequest>::from(ws_rx);
-
-    (connection, client_rx)
+fn encode_seed(seed: &Seed) -> String {
+    base64::encode_config(
+        seed.as_bytes(),
+        base64::Config::new(base64::CharacterSet::UrlSafe, true),
+    )
 }
 
 #[derive(Debug, Clone)]
-struct Connection {
-    id: usize,
-    tx: Arc<ClientTx<WsResponse>>,
-}
-
-impl Connection {
-    pub fn new(tx: ClientTx<WsResponse>) -> Self {
-        let id = CONNECTION_ID.fetch_add(1, Ordering::Relaxed);
-        Self {
-            id,
-            tx: Arc::new(tx),
-        }
-    }
-
-    #[inline]
-    pub fn send(&self, response: &WsResponse) {
-        self.tx.send(response)
-    }
+enum InternalMessage {
+    SessionCreated(ArcRwLock<Session>),
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type", content = "content")]
 enum WsRequest {
-    Time,
-}
-
-#[derive(Debug)]
-struct ClientRx<T>(
-    futures::stream::SplitStream<WebSocket>,
-    std::marker::PhantomData<T>,
-);
-
-impl<T> ClientRx<T>
-where
-    for<'a> T: Deserialize<'a>,
-{
-    pub async fn next(&mut self) -> Option<T> {
-        while let Some(Ok(message)) = self.0.next().await {
-            match message
-                .to_str()
-                .and_then(|text| serde_json::from_str(text).map_err(|_| ()))
-            {
-                Ok(data) => return Some(data),
-                Err(_) => continue,
-            }
-        }
-
-        None
-    }
-}
-
-impl<T> From<futures::stream::SplitStream<WebSocket>> for ClientRx<T> {
-    fn from(ws_rx: futures::stream::SplitStream<WebSocket>) -> Self {
-        Self(ws_rx, Default::default())
-    }
+    Connect { phrase: String },
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", content = "content")]
 enum WsResponse {
-    OnCreated { phrase: String },
+    Created { phrase: String },
+    Connected { seed: String },
+    PeerNotFound,
 }
 
-#[derive(Debug, Clone)]
-struct ClientTx<T>(
-    mpsc::UnboundedSender<Result<ws::Message, warp::Error>>,
-    std::marker::PhantomData<T>,
-);
-
-impl<T> ClientTx<T>
-where
-    T: Serialize,
-{
-    pub fn send(&self, message: &T) {
-        self.send_raw(ws::Message::text(serde_json::to_string(message).unwrap()));
-    }
-}
-
-impl<T> ClientTx<T> {
-    #[inline]
-    pub fn send_raw(&self, message: ws::Message) {
-        let _ = self.0.send(Ok(message));
-    }
-}
-
-impl<T> From<mpsc::UnboundedSender<Result<ws::Message, warp::Error>>> for ClientTx<T> {
-    fn from(tx: mpsc::UnboundedSender<Result<ws::Message, warp::Error>>) -> Self {
-        Self(tx, Default::default())
-    }
-}
-
-static CONNECTION_ID: AtomicUsize = AtomicUsize::new(0);
+type Connection = websocket::Connection<InternalMessage, WsResponse>;

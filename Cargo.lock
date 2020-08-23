@@ -284,6 +284,7 @@ dependencies = [
  "hyper",
  "itertools",
  "log 0.4.11",
+ "pin-project",
  "serde 1.0.115",
  "serde_json",
  "tiny-bip39",
