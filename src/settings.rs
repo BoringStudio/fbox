@@ -1,7 +1,6 @@
 use std::net::SocketAddr;
 
 use anyhow::Result;
-use bip39::MnemonicType;
 use config::{Config, File, FileFormat};
 use serde::Deserialize;
 

@@ -31,7 +31,9 @@ mod filters {
     use warp::Filter;
 
     pub fn api_v1(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
-        warp::path("v1").and(post_sessions(ctx)).boxed()
+        warp::path("v1")
+            .and(post_sessions(ctx.clone()).or(ws_sessions_socket(ctx)))
+            .boxed()
     }
 
     fn post_sessions(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
@@ -39,6 +41,18 @@ mod filters {
             .and(warp::post())
             .and(with_ctx(ctx))
             .and_then(controllers::post_sessions)
+            .boxed()
+    }
+
+    fn ws_sessions_socket(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
+        warp::path!("sessions" / "socket")
+            .and(warp::ws())
+            .and(with_ctx(ctx))
+            .map(|ws: warp::ws::Ws, ctx: Context| {
+                ws.on_upgrade(move |websocket| async move {
+                    ctx.session_service.handle_connection(websocket).await
+                })
+            })
             .boxed()
     }
 
