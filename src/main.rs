@@ -17,10 +17,7 @@ async fn run() -> Result<()> {
     let settings = Arc::new(Settings::new()?);
     let session_service = Arc::new(SessionService::new(settings.clone()));
 
-    let ctx = Context {
-        settings,
-        session_service,
-    };
+    let ctx = Context { settings, session_service };
 
     tokio::spawn(api::serve(ctx));
 

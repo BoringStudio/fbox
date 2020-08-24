@@ -9,10 +9,7 @@ use crate::prelude::*;
 
 pub fn init_connection<Int, ExtReq, ExtRes>(
     websocket: WebSocket,
-) -> (
-    Arc<Connection<Int, ExtRes>>,
-    EventRx<Int, ExtReq, impl Stream<Item = ExtReq>>,
-)
+) -> (Arc<Connection<Int, ExtRes>>, EventRx<Int, ExtReq, impl Stream<Item = ExtReq>>)
 where
     Int: Send,
     for<'a> ExtReq: Deserialize<'a> + Send,
@@ -36,7 +33,7 @@ where
 
 #[derive(Debug, Clone)]
 pub struct Connection<Int, ExtRes> {
-    id: usize,
+    id: ConnectionId,
     internal_tx: InternalTx<Int>,
     external_tx: WebSocketTx,
     _marker: std::marker::PhantomData<ExtRes>,
@@ -73,7 +70,7 @@ where
     }
 
     #[inline]
-    pub fn id(&self) -> usize {
+    pub fn id(&self) -> ConnectionId {
         self.id
     }
 }
@@ -116,12 +113,10 @@ fn filter_external<ExtReq>(item: WebSocketRxItem) -> Ready<Option<ExtReq>>
 where
     for<'a> ExtReq: Deserialize<'a> + Send,
 {
-    futures::future::ready(item.ok().and_then(|message| {
-        message
-            .to_str()
-            .ok()
-            .and_then(|text| serde_json::from_str(text).ok())
-    }))
+    futures::future::ready(
+        item.ok()
+            .and_then(|message| message.to_str().ok().and_then(|text| serde_json::from_str(text).ok())),
+    )
 }
 
 impl<Int, ExtReq, ExtReqStr> futures::Stream for EventRx<Int, ExtReq, ExtReqStr>
@@ -164,5 +159,7 @@ type WebSocketRx = futures::stream::SplitStream<WebSocket>;
 type WebSocketRxItem = Result<ws::Message, warp::Error>;
 type InternalTx<T> = mpsc::UnboundedSender<T>;
 type InternalRx<T> = mpsc::UnboundedReceiver<T>;
+
+pub type ConnectionId = usize;
 
 static CONNECTION_ID: AtomicUsize = AtomicUsize::new(0);
