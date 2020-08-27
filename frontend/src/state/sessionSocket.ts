@@ -1,16 +1,42 @@
-import React from 'react';
+export type WsRequestKind = 'connect';
 
-type WsResponseContainer<T, C> = { type: T; content: C };
-type WsResponse =
+export type WsRequestBody<T extends WsRequestKind> =
+  | (T extends 'connect' ? { phrase: string } : never)
+  | never;
+
+export type WsRequestContainer<K extends WsRequestKind> = {
+  type: K;
+  content: WsRequestBody<K>;
+};
+export type WsRequest = WsRequestContainer<'connect'>;
+
+export type WsResponseContainer<T, C> = { type: T; content: C };
+export type WsResponse =
   | WsResponseContainer<'created', { phrase: string }>
   | WsResponseContainer<'connected', { seed: string }>
   | WsResponseContainer<'peer_not_found', undefined>;
 
-type OnCreatedHandler = (phrase: string) => void;
-type OnConnectedHandler = (seed: string) => void;
-type OnPeerNotFoundHandler = () => void;
+export type OnCreatedHandler = (phrase: string) => void;
+export type OnConnectedHandler = (seed: string) => void;
+export type OnPeerNotFoundHandler = () => void;
 
-class SessionSocketBuilder {
+export class SessionSocket {
+  private socket: WebSocket;
+
+  constructor(socket: WebSocket) {
+    this.socket = socket;
+  }
+
+  send<K extends WsRequestKind>(kind: K, content: WsRequestBody<K>) {
+    this.socket.send(JSON.stringify({ type: kind, content } as WsRequest));
+  }
+
+  close() {
+    this.socket.close();
+  }
+}
+
+export class SessionSocketBuilder {
   private url: string;
   private onCreatedHandler: OnCreatedHandler | null = null;
   private onConnectedHandler: OnConnectedHandler | null = null;
@@ -36,12 +62,17 @@ class SessionSocketBuilder {
     return this;
   }
 
+  onPeerNotFound(handler: OnPeerNotFoundHandler): SessionSocketBuilder {
+    this.onPeerNotFoundHandler = handler;
+    return this;
+  }
+
   onDisconnect(handler: () => void): SessionSocketBuilder {
     this.onDisconnectedHandler = handler;
     return this;
   }
 
-  build(): WebSocket {
+  build(): SessionSocket {
     const socket = new WebSocket(this.url);
     socket.onmessage = message => {
       const data: WsResponse = JSON.parse(message.data);
@@ -61,52 +92,6 @@ class SessionSocketBuilder {
     };
     this.onDisconnectedHandler && (socket.onclose = this.onDisconnectedHandler);
 
-    return socket;
-  }
-}
-
-let wsSocket: WebSocket | null = null;
-
-interface IProps {}
-
-interface IState {
-  phrase: string | null;
-}
-
-export class WebSocketService extends React.Component<IProps, IState> {
-  private builder: SessionSocketBuilder;
-
-  constructor(props: IProps) {
-    super(props);
-
-    this.builder = new SessionSocketBuilder().onCreate(this.onSocketCreated);
-
-    this.state = {
-      phrase: null
-    };
-  }
-
-  componentDidMount() {
-    console.log(wsSocket);
-    wsSocket?.close();
-    wsSocket = this.builder.build();
-    console.log(wsSocket);
-  }
-
-  onSocketCreated = (phrase: string) => {
-    console.log(phrase);
-    this.setState({
-      phrase
-    });
-  };
-
-  render() {
-    const { phrase } = this.state;
-
-    return (
-      <div>
-        <pre>phrase: {phrase}</pre>
-      </div>
-    );
+    return new SessionSocket(socket);
   }
 }
