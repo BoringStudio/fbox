@@ -1,19 +1,18 @@
 import React from 'react';
-import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
 
-import { State } from './state';
+import { State, StateContext } from './state';
 import { MainPage } from './pages/Main';
+import { LoadingPage } from './pages/Loading';
 
 const App = () => {
   return (
     <State>
-      <Router>
-        <Switch>
-          <Route path="/">
-            <MainPage />
-          </Route>
-        </Switch>
-      </Router>
+      <StateContext.Consumer>
+        {({ kind }) =>
+          (kind === 'uninitialized' && <LoadingPage />) ||
+          (kind === 'created' && <MainPage />)
+        }
+      </StateContext.Consumer>
     </State>
   );
 };

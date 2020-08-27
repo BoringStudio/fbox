@@ -1,20 +1,16 @@
 import React from 'react';
 
-import { StateContext } from '../../state';
+import { StateContext, IStateCreated } from '../../state';
 import { SessionQrCode } from '../../components/SessionQrCode';
 import { SessionCodeForm } from '../../components/SessionCodeForm';
 
 import './style.scss';
 
 export const MainPage = () => {
-  const session = React.useContext(StateContext);
-
-  if (session.state !== 'created') {
-    return null;
-  }
+  const session = React.useContext(StateContext) as IStateCreated;
 
   return (
-    <div className="content">
+    <div className="content main-page">
       <div className="panel panel--left">
         <SessionQrCode value={session.phrase} />
       </div>

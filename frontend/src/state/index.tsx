@@ -1,18 +1,30 @@
 import React from 'react';
 
-import {
-  SessionSocketBuilder,
-  SessionSocket,
-  WsRequest
-} from './sessionSocket';
+import { SessionSocketBuilder, SessionSocket } from './sessionSocket';
+
+export type IStateUninitialized = {
+  kind: 'uninitialized';
+};
+
+export type IStateCreated = {
+  kind: 'created';
+  phrase: string;
+  connect: (phrase: string) => void;
+};
+
+export type IStateConnected = {
+  kind: 'connected';
+  seed: string;
+  reconnect: () => void;
+};
 
 export type IStateContext =
-  | { state: 'uninitialized' }
-  | { state: 'created'; phrase: string; connect: (phrase: string) => void }
-  | { state: 'connected'; seed: string };
+  | IStateUninitialized
+  | IStateCreated
+  | IStateConnected;
 
 export const StateContext = React.createContext<IStateContext>({
-  state: 'uninitialized'
+  kind: 'uninitialized'
 });
 
 let wsSocket: SessionSocket | null = null;
@@ -26,7 +38,7 @@ export class State extends React.Component<{}, IStateContext> {
     this.builder = new SessionSocketBuilder()
       .onCreate(phrase => {
         this.setState({
-          state: 'created',
+          kind: 'created',
           phrase,
           connect: phrase => {
             wsSocket?.send('connect', { phrase });
@@ -35,8 +47,9 @@ export class State extends React.Component<{}, IStateContext> {
       })
       .onConnect(seed => {
         this.setState({
-          state: 'connected',
-          seed
+          kind: 'connected',
+          seed,
+          reconnect: this.reconnect
         });
       })
       .onPeerNotFound(() => {
@@ -44,15 +57,18 @@ export class State extends React.Component<{}, IStateContext> {
       });
 
     this.state = {
-      state: 'uninitialized'
+      kind: 'uninitialized'
     };
   }
 
-  componentDidMount() {
-    console.log(wsSocket);
+  reconnect = () => {
     wsSocket?.close();
     wsSocket = this.builder.build();
     console.log(wsSocket);
+  };
+
+  componentDidMount() {
+    this.reconnect();
   }
 
   render() {
