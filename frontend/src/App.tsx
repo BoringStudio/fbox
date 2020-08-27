@@ -1,8 +1,9 @@
 import React from 'react';
 
 import { State, StateContext } from './state';
-import { MainPage } from './pages/Main';
+import { ConnectionPage } from './pages/Connection';
 import { LoadingPage } from './pages/Loading';
+import { MainPage } from './pages/Main';
 
 const App = () => {
   return (
@@ -10,7 +11,8 @@ const App = () => {
       <StateContext.Consumer>
         {({ kind }) =>
           (kind === 'uninitialized' && <LoadingPage />) ||
-          (kind === 'created' && <MainPage />)
+          (kind === 'created' && <ConnectionPage />) ||
+          (kind === 'connected' && <MainPage />)
         }
       </StateContext.Consumer>
     </State>

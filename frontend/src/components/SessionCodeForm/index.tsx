@@ -6,7 +6,7 @@ const LOCALIZATION = {
   title: 'FBox',
   description:
     'Scan QR code on the left with your second device or enter mnemonics below:',
-  joinButton: 'Join'
+  joinButton: 'Add Peer'
 };
 
 type SessionCodeFormProps = {

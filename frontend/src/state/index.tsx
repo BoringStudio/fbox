@@ -15,6 +15,7 @@ export type IStateCreated = {
 export type IStateConnected = {
   kind: 'connected';
   seed: string;
+  addPeer: (phrase: string) => void;
   reconnect: () => void;
 };
 
@@ -35,20 +36,21 @@ export class State extends React.Component<{}, IStateContext> {
   constructor(props: {}) {
     super(props);
 
+    const addPeer = (phrase: string) => wsSocket?.send('connect', { phrase });
+
     this.builder = new SessionSocketBuilder()
       .onCreate(phrase => {
         this.setState({
           kind: 'created',
           phrase,
-          connect: phrase => {
-            wsSocket?.send('connect', { phrase });
-          }
+          connect: addPeer
         });
       })
       .onConnect(seed => {
         this.setState({
           kind: 'connected',
           seed,
+          addPeer: addPeer,
           reconnect: this.reconnect
         });
       })

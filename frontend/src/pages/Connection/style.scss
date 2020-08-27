@@ -1,0 +1,48 @@
+@import '../../styles/shared/colors';
+@import '../../styles/shared/media';
+
+.content.connection-page {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-evenly;
+
+  .panel {
+    width: 50%;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    padding: 2em;
+
+    &--left {
+      align-items: flex-end;
+      background-color: $color-secondary;
+    }
+
+    &--right {
+      align-items: flex-start;
+      background-color: $color-primary;
+    }
+
+    @include media-down(xl) {
+      &--left,
+      &--right {
+        align-items: center;
+      }
+    }
+
+    @include media-down(md) {
+      &--left {
+        display: none;
+      }
+
+      &--right {
+        width: 100%;
+        padding: 0;
+      }
+    }
+  }
+}
