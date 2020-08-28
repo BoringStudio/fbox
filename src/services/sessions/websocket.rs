@@ -155,7 +155,6 @@ where
 }
 
 type WebSocketTx = mpsc::UnboundedSender<Result<ws::Message, warp::Error>>;
-type WebSocketRx = futures::stream::SplitStream<WebSocket>;
 type WebSocketRxItem = Result<ws::Message, warp::Error>;
 type InternalTx<T> = mpsc::UnboundedSender<T>;
 type InternalRx<T> = mpsc::UnboundedReceiver<T>;

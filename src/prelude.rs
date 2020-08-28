@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 pub use std::collections::HashMap;
 pub use std::pin::Pin;
 pub use std::sync::Arc;
