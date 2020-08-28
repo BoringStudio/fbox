@@ -19,10 +19,7 @@ export type IStateConnected = {
   reconnect: () => void;
 };
 
-export type IStateContext =
-  | IStateUninitialized
-  | IStateCreated
-  | IStateConnected;
+export type IStateContext = IStateUninitialized | IStateCreated | IStateConnected;
 
 export const StateContext = React.createContext<IStateContext>({
   kind: 'uninitialized'
@@ -38,25 +35,27 @@ export class State extends React.Component<{}, IStateContext> {
 
     const addPeer = (phrase: string) => wsSocket?.send('connect', { phrase });
 
-    this.builder = new SessionSocketBuilder()
-      .onCreate(phrase => {
+    this.builder = new SessionSocketBuilder();
+    this.builder.responseHandlers = {
+      created: ({ phrase }) => {
         this.setState({
           kind: 'created',
           phrase,
           connect: addPeer
         });
-      })
-      .onConnect(seed => {
+      },
+      connected: ({ seed }) => {
         this.setState({
           kind: 'connected',
           seed,
           addPeer: addPeer,
           reconnect: this.reconnect
         });
-      })
-      .onPeerNotFound(() => {
+      },
+      peer_not_found: () => {
         alert('Peer not found!');
-      });
+      }
+    };
 
     this.state = {
       kind: 'uninitialized'
@@ -74,10 +73,6 @@ export class State extends React.Component<{}, IStateContext> {
   }
 
   render() {
-    return (
-      <StateContext.Provider value={this.state}>
-        {this.props.children}
-      </StateContext.Provider>
-    );
+    return <StateContext.Provider value={this.state}>{this.props.children}</StateContext.Provider>;
   }
 }
