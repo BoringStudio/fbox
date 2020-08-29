@@ -51,8 +51,8 @@ export class SessionSocketBuilder {
 
 export type WsRequestContent = {
   connect: { phrase: string };
-  add_file: { name: string; size: number };
-  remove_file: { name: string };
+  add_file: { id: string, name: string; mime_type: string; size: number };
+  remove_file: { id: string };
 };
 export type WsRequestType = keyof WsRequestContent;
 export type WsRequestContainer<T extends WsRequestType> = { type: T; content: WsRequestContent[T] } | never;
@@ -62,12 +62,13 @@ export type WsRequest = WsRequestContainer<WsRequestType>;
 
 export type WsResponseContent = {
   created: { phrase: string };
-  connected: { seed: string; files: [FileInfo] };
+  connected: { connection_id: number; seed: string; files: FileInfo[] };
+  file_added: FileInfo;
+  file_removed: { id: string };
+  file_requested: { id: string };
   peer_not_found: null;
   session_not_found: null;
   file_count_limit_reached: null;
-  file_added: { id: string; name: string; size: number };
-  file_removed: { id: string };
 };
 export type WsResponseType = keyof WsResponseContent;
 export type WsResponseContainer<T extends WsResponseType> = { type: T; content: WsResponseContent[T] } | never;
@@ -78,7 +79,9 @@ export type WsResponse = WsResponseContainer<WsResponseType>;
 export type FileInfo = {
   id: string;
   name: string;
+  mime_type: string;
   size: number;
+  connection_id: number;
 };
 
 // handlers

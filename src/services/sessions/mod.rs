@@ -1,7 +1,8 @@
 mod websocket;
 
-use bip39::{Language, Mnemonic, MnemonicType, Seed};
-use futures::StreamExt;
+use bip39::{Language, Mnemonic, MnemonicType};
+use bytes::Buf;
+use futures::{Stream, StreamExt};
 use uuid::Uuid;
 use warp::ws::WebSocket;
 
@@ -14,34 +15,43 @@ struct Session {
     seed: Seed,
     connections: HashMap<ConnectionId, Arc<Connection>>,
     files: HashMap<Uuid, FileInfo>,
+    pending_requests: HashMap<Uuid, mpsc::UnboundedSender<bytes::Bytes>>,
 }
 
 impl Session {
     pub fn new<T: AsRef<str>>(mnemonic: &Mnemonic, password: T, host: Arc<Connection>) -> Self {
-        let seed = Seed::new(mnemonic, password.as_ref());
+        let seed = bip39::Seed::new(mnemonic, password.as_ref());
 
         let mut connections = HashMap::new();
         connections.insert(host.id(), host);
 
         Self {
-            seed,
+            seed: seed.into_bytes(),
             connections,
             files: Default::default(),
+            pending_requests: Default::default(),
         }
     }
 
     pub fn broadcast_external(&self, message: &WsResponse) {
-        for (_, peer) in self.connections.iter() {
-            peer.send_external(message);
-        }
+        self.connections.iter().for_each(|(_, peer)| peer.send_external(message))
+    }
+
+    pub fn broadcast_external_except(&self, connection_id: usize, message: &WsResponse) {
+        self.connections
+            .iter()
+            .filter(|(&id, _)| id != connection_id)
+            .for_each(|(_, peer)| peer.send_external(message));
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct FileInfo {
-    id: Uuid,
-    name: String,
-    size: usize,
+pub struct FileInfo {
+    pub id: Uuid,
+    pub name: String,
+    pub mime_type: String,
+    pub size: usize,
+    pub connection_id: usize,
 }
 
 pub struct SessionService {
@@ -57,6 +67,63 @@ impl SessionService {
             pending_connections: Arc::new(Default::default()),
             sessions: Arc::new(Default::default()),
         }
+    }
+
+    pub async fn request_file(&self, id: Uuid, seed: String) -> Option<(FileInfo, mpsc::UnboundedReceiver<bytes::Bytes>)> {
+        let seed = decode_seed(&seed).ok()?;
+        log::debug!("decoded seed: {:?}", seed);
+
+        let session = self.sessions.read().await.get(&seed)?.clone();
+        log::debug!("found session");
+
+        let mut session = session.write().await;
+        let file = session.files.get(&id)?.clone();
+        log::debug!("found file");
+
+        let file_owner = session.connections.get(&file.connection_id)?.clone();
+        log::debug!("found file owner");
+
+        if session.pending_requests.contains_key(&id) {
+            return None;
+        }
+
+        let (tx, rx) = mpsc::unbounded_channel();
+        session.pending_requests.insert(id, tx);
+        log::debug!("created request");
+
+        file_owner.send_external(&WsResponse::FileRequested { id });
+
+        Some((file, rx))
+    }
+
+    pub async fn upload_file<T, I>(&self, id: Uuid, seed: String, data: T) -> Option<()>
+    where
+        T: Stream<Item = Result<I, warp::Error>>,
+        I: Buf,
+    {
+        let seed = decode_seed(&seed).ok()?;
+        log::debug!("decoded seed: {:?}", seed);
+
+        let stream = {
+            let session = self.sessions.read().await.get(&seed)?.clone();
+            let mut session = session.write().await;
+            session.pending_requests.remove(&id)?
+        };
+
+        data.for_each(|part| async {
+            match part {
+                Ok(mut part) => {
+                    println!("part: {:?}", part.remaining());
+                    stream.send(part.to_bytes()).unwrap_or_else(|e| println!("error: {:?}", e));
+                }
+                Err(e) => {
+                    println!("error: {:?}", e);
+                }
+            }
+        })
+        .await;
+
+        Some(())
     }
 
     pub async fn handle_connection(&self, websocket: WebSocket) {
@@ -131,7 +198,11 @@ impl SessionService {
                         let seed = encode_seed(&seed);
 
                         peer.send_internal(InternalMessage::SessionCreated(session.clone()));
-                        peer.send_external(&WsResponse::Connected { seed, files });
+                        peer.send_external(&WsResponse::Connected {
+                            connection_id: peer.id(),
+                            seed,
+                            files,
+                        });
                     } else {
                         log::trace!("id=[{:0>5}], create new session", conn.id());
 
@@ -161,15 +232,19 @@ impl SessionService {
                         // Send messages
                         peer.send_internal(InternalMessage::SessionCreated(session.clone()));
 
-                        let connection_message = WsResponse::Connected {
+                        peer.send_external(&WsResponse::Connected {
+                            connection_id: peer.id(),
                             seed: encoded_seed.clone(),
                             files: Default::default(),
-                        };
-                        peer.send_external(&connection_message);
-                        conn.send_external(&connection_message);
+                        });
+                        conn.send_external(&WsResponse::Connected {
+                            connection_id: conn.id(),
+                            seed: encoded_seed,
+                            files: Default::default(),
+                        });
                     }
                 }
-                Event::External(WsRequest::AddFile { name, size }) => {
+                Event::External(WsRequest::AddFile { id, name, mime_type, size }) => {
                     let mut session = match &local_session {
                         Some(session) => session.write().await,
                         None => {
@@ -183,10 +258,17 @@ impl SessionService {
                         continue;
                     }
 
+                    if session.files.contains_key(&id) {
+                        conn.send_external(&WsResponse::FileAlreadyExists);
+                        continue;
+                    }
+
                     let file_info = FileInfo {
-                        id: Uuid::new_v4(),
+                        id,
                         name,
+                        mime_type,
                         size,
+                        connection_id: conn.id(),
                     };
                     session.files.insert(file_info.id, file_info.clone());
                     session.broadcast_external(&WsResponse::FileAdded(file_info));
@@ -226,6 +308,15 @@ impl SessionService {
                         // Remove self from session connections
                         let mut session = session.write().await;
                         session.connections.remove(&conn.id());
+                        let conn_files = session
+                            .files
+                            .iter()
+                            .filter_map(|(_, file)| if file.connection_id == conn.id() { Some(file.id) } else { None })
+                            .collect::<Vec<_>>();
+                        for id in conn_files.into_iter() {
+                            session.files.remove(&id);
+                            session.broadcast_external_except(conn.id(), &WsResponse::FileRemoved { id });
+                        }
 
                         log::trace!("id=[{:0>5}], notify all peers", conn.id());
                         // Notify all peers
@@ -268,7 +359,11 @@ impl SessionService {
 }
 
 fn encode_seed(seed: &Seed) -> String {
-    base64::encode_config(seed.as_bytes(), base64::Config::new(base64::CharacterSet::UrlSafe, true))
+    base64::encode_config(seed, base64::Config::new(base64::CharacterSet::UrlSafe, true))
+}
+
+fn decode_seed(seed: &str) -> Result<Vec<u8>, base64::DecodeError> {
+    base64::decode_config(seed, base64::Config::new(base64::CharacterSet::UrlSafe, true))
 }
 
 #[derive(Debug, Clone)]
@@ -280,24 +375,46 @@ enum InternalMessage {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type", content = "content", rename_all = "snake_case")]
 enum WsRequest {
-    Connect { phrase: String },
-    AddFile { name: String, size: usize },
-    RemoveFile { id: Uuid },
+    Connect {
+        phrase: String,
+    },
+    AddFile {
+        id: Uuid,
+        name: String,
+        mime_type: String,
+        size: usize,
+    },
+    RemoveFile {
+        id: Uuid,
+    },
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", content = "content", rename_all = "snake_case")]
 enum WsResponse {
-    Created { phrase: String },
-    Connected { seed: String, files: Vec<FileInfo> },
+    Created {
+        phrase: String,
+    },
+    Connected {
+        connection_id: usize,
+        seed: String,
+        files: Vec<FileInfo>,
+    },
+    FileAdded(FileInfo),
+    FileRemoved {
+        id: Uuid,
+    },
+    FileRequested {
+        id: Uuid,
+    },
     PeerNotFound,
     SessionNotFound,
     FileCountLimitReached,
-    FileAdded(FileInfo),
-    FileRemoved { id: Uuid },
+    FileAlreadyExists,
 }
 
 const MAX_FILE_COUNT: usize = 10;
 
 type Connection = websocket::Connection<InternalMessage, WsResponse>;
 type Phrase = String;
+type Seed = Vec<u8>;

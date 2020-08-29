@@ -1,7 +1,6 @@
 import React from 'react';
 
 import './style.scss';
-import Axios from 'axios';
 
 export const LoadingPage = () => {
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
@@ -34,12 +33,7 @@ export const LoadingPage = () => {
     <div className="content loading-page">
       <div>
         <input type="file" name="file" onChange={onFileSelected} required />
-        <button
-          type="submit"
-          className="button"
-          disabled={selectedFile == null}
-          onClick={onSubmit}
-        >
+        <button type="submit" className="button" disabled={selectedFile == null} onClick={onSubmit}>
           Submit
         </button>
       </div>

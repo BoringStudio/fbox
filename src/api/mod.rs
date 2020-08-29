@@ -11,7 +11,7 @@ pub async fn serve(ctx: Context) {
     let api = filters::api_v1(ctx);
     let cors = warp::cors()
         .allow_any_origin()
-        .allow_headers(vec!["content-type"])
+        .allow_headers(vec!["Content-Type", "Content-Length", "X-Session-Seed"])
         .allow_methods(vec!["GET", "OPTIONS", "POST", "DELETE", "PUT"]);
     let log = warp::log("fbox");
 

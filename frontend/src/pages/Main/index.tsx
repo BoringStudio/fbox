@@ -1,6 +1,7 @@
 import React from 'react';
 
-import { StateContext, IStateConnected } from '../../state';
+import { StateContext, IStateContext } from '../../state';
+import { FileInput } from '../../components/FileInput';
 
 import './style.scss';
 
@@ -10,12 +11,31 @@ const LOCALIZATION = {
 };
 
 export const MainPage = () => {
-  const session = React.useContext(StateContext) as IStateConnected;
+  const session = React.useContext(StateContext) as IStateContext<'connected'>;
 
   const [peerMnemonics, setPeerMnemonics] = React.useState('');
 
+  const onFilesAdded = (files: File[]) => files.forEach(file => session.addFile(file));
+
   return (
     <div className="content main-page">
+      <ul>
+        {session.files.map(file => (
+          <li>
+            <a
+              className="button"
+              style={{ marginBottom: '1em' }}
+              href={new URL(
+                `/v1/sessions/files/${file.id}?session_seed=${session.seed}`,
+                process.env.REACT_APP_API_URL
+              ).toString()}
+            >
+              <pre>{JSON.stringify(file)}</pre>
+            </a>
+          </li>
+        ))}
+      </ul>
+      <FileInput onDrop={onFilesAdded} />
       <input
         className="session-code-input input"
         type="text"

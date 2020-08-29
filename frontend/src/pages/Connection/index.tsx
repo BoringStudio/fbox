@@ -1,13 +1,13 @@
 import React from 'react';
 
-import { StateContext, IStateCreated } from '../../state';
+import { StateContext, IStateContext } from '../../state';
 import { SessionQrCode } from '../../components/SessionQrCode';
 import { SessionCodeForm } from '../../components/SessionCodeForm';
 
 import './style.scss';
 
 export const ConnectionPage = () => {
-  const session = React.useContext(StateContext) as IStateCreated;
+  const session = React.useContext(StateContext) as IStateContext<'created'>;
 
   return (
     <div className="content connection-page">
@@ -15,7 +15,7 @@ export const ConnectionPage = () => {
         <SessionQrCode value={session.phrase} />
       </div>
       <div className="panel panel--right">
-        <SessionCodeForm onSubmit={session.connect} />
+        <SessionCodeForm onSubmit={session.addPeer} />
       </div>
     </div>
   );
