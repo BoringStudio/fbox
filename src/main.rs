@@ -15,7 +15,7 @@ async fn main() -> Result<()> {
 
 async fn run() -> Result<()> {
     let settings = Arc::new(Settings::new()?);
-    let session_service = Arc::new(SessionService::new(settings.clone()));
+    let session_service = SessionService::new(&settings);
 
     let ctx = Context { settings, session_service };
 

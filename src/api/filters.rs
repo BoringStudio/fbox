@@ -1,7 +1,5 @@
 use super::Context;
 
-use crate::api::res::*;
-
 use http::HeaderValue;
 use serde::Deserialize;
 use uuid::Uuid;
@@ -11,23 +9,10 @@ use warp::Filter;
 pub fn api_v1(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
     warp::path("v1")
         .and(
-            post_sessions(ctx.clone())
-                .or(get_sessions_files(ctx.clone()))
+            get_sessions_files(ctx.clone())
                 .or(post_sessions_files(ctx.clone()))
                 .or(ws_sessions_socket(ctx)),
         )
-        .boxed()
-}
-
-fn post_sessions(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
-    warp::path!("sessions")
-        .and(warp::post())
-        .and(with_ctx(ctx))
-        .and_then(|ctx: Context| async move {
-            let mnemonic_resp = MnemonicResp::from(ctx.session_service.generate_mnemonic());
-
-            Ok::<_, warp::Rejection>(warp::reply::json(&mnemonic_resp))
-        })
         .boxed()
 }
 
@@ -48,7 +33,7 @@ fn get_sessions_files(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
 
             match ctx.session_service.request_file(id, params.session_seed).await {
                 Some((file_info, rx)) => {
-                    let body: hyper::Body = hyper::Body::wrap_stream(rx.map(|part| Ok::<_, std::convert::Infallible>(part)));
+                    let body: hyper::Body = hyper::Body::wrap_stream(rx.map(Ok::<_, std::convert::Infallible>));
                     hyper::Response::builder()
                         .header(
                             http::header::CONTENT_DISPOSITION,

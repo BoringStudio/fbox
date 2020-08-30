@@ -21,7 +21,7 @@ where
 
     tokio::task::spawn(rx.forward(ws_tx).map(|result| {
         if let Err(e) = result {
-            log::trace!("websocket close error: {}", e);
+            log::trace!("websocket closed: {}", e);
         }
     }));
 

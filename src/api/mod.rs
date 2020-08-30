@@ -1,5 +1,4 @@
 mod filters;
-mod res;
 
 use warp::Filter;
 
