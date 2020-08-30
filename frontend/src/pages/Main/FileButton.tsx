@@ -30,10 +30,7 @@ const humanFileSize = (bytes: number, dp = 1) => {
 export const FileButton = (props: IProps) => {
   const { seed, file } = props;
 
-  const downloadLink = new URL(
-    `/v1/sessions/files/${file.id}?session_seed=${seed}`,
-    process.env.REACT_APP_API_URL
-  ).toString();
+  const downloadLink = `${process.env.REACT_APP_API_URL}/sessions/files/${file.id}?session_seed=${seed}`;
 
   return (
     <a className="file-button" href={downloadLink}>

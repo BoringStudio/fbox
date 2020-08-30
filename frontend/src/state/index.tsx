@@ -112,7 +112,9 @@ export class State extends React.Component<{}, PossibleStates> {
           return;
         }
 
-        fetch(new URL(`v1/sessions/files/${id}`, process.env.REACT_APP_API_URL).toString(), {
+        const url = `${process.env.REACT_APP_API_URL}/sessions/files/${id}`;
+
+        fetch(url, {
           method: 'POST',
           body: localFile,
           headers: {

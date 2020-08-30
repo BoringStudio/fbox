@@ -7,7 +7,8 @@ use warp::filters::BoxedFilter;
 use warp::Filter;
 
 pub fn api_v1(ctx: Context) -> BoxedFilter<(impl warp::Reply,)> {
-    warp::path("v1")
+    warp::path("api")
+        .and(warp::path("v1"))
         .and(
             get_sessions_files(ctx.clone())
                 .or(post_sessions_files(ctx.clone()))
