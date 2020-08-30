@@ -74,7 +74,9 @@ impl SessionService {
             match part {
                 Ok(mut part) => {
                     println!("part: {:?}", part.remaining());
-                    stream.send(part.to_bytes()).unwrap_or_else(|e| println!("error: {:?}", e));
+                    stream
+                        .send(part.to_bytes())
+                        .unwrap_or_else(|e| println!("error: {}", e.to_string()));
                 }
                 Err(e) => {
                     println!("error: {:?}", e);

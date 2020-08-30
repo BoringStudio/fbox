@@ -10,6 +10,7 @@ const App = () => {
     <State>
       <StateContext.Consumer>
         {({ kind }) =>
+          //<MainPage />
           (kind === 'uninitialized' && <LoadingPage />) ||
           (kind === 'created' && <ConnectionPage />) ||
           (kind === 'connected' && <MainPage />)

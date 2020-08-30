@@ -1,17 +1,39 @@
 import React from 'react';
 
+import { v4 as uuidv4 } from 'uuid';
+
 import { StateContext, IStateContext } from '../../state';
-import { FileInput } from '../../components/FileInput';
+import { FileInput } from './FileInput';
+import { FileButton } from './FileButton';
 
 import './style.scss';
 
 const LOCALIZATION = {
-  addPeerButton: 'Add Peer',
-  disconnectButton: 'Disconnect'
+  addPeerButton: 'Add Peer'
 };
 
 export const MainPage = () => {
   const session = React.useContext(StateContext) as IStateContext<'connected'>;
+  // const session: IStateContext<'connected'> = {
+  //   kind: 'connected',
+  //   connection_id: 1,
+  //   seed: 'some seed',
+  //   files: [
+  //     {
+  //       id: uuidv4(),
+  //       name: 'My super file.txt',
+  //       size: 123123123,
+  //       mime_type: '',
+  //       connection_id: 1
+  //     }
+  //   ],
+  //   localFiles: new Map<string, File>(),
+  //   addFile: (file: File) => console.log(file),
+  //   removeFile: (id: string) => console.log(id),
+  //   addPeer: (phrase: string) => console.log(phrase),
+  //   reconnect: () => console.log('reconnect'),
+  //   downloadFile: id => console.log(id)
+  // };
 
   const [peerMnemonics, setPeerMnemonics] = React.useState('');
 
@@ -19,43 +41,30 @@ export const MainPage = () => {
 
   return (
     <div className="content main-page">
-      <ul>
+      <div className="files-list">
         {session.files.map(file => (
-          <li>
-            <a
-              className="button"
-              style={{ marginBottom: '1em' }}
-              href={new URL(
-                `/v1/sessions/files/${file.id}?session_seed=${session.seed}`,
-                process.env.REACT_APP_API_URL
-              ).toString()}
-            >
-              <pre>{JSON.stringify(file)}</pre>
-            </a>
-          </li>
+          <FileButton seed={session.seed} file={file} />
         ))}
-      </ul>
-      <FileInput onDrop={onFilesAdded} />
-      <input
-        className="session-code-input input"
-        type="text"
-        value={peerMnemonics}
-        onChange={event => setPeerMnemonics(event.currentTarget.value)}
-      />
-      <br />
-      <button
-        className="button"
-        onClick={() => {
-          session.addPeer(peerMnemonics);
-          setPeerMnemonics('');
-        }}
-      >
-        {LOCALIZATION.addPeerButton}
-      </button>
-      <div className="seed">{session.seed}</div>
-      <button className="button" onClick={session.reconnect}>
-        {LOCALIZATION.disconnectButton}
-      </button>
+        <FileInput onDrop={onFilesAdded} />
+      </div>
+      <hr />
+      <div className="peer-form">
+        <input
+          className="session-code-input input"
+          type="text"
+          value={peerMnemonics}
+          onChange={event => setPeerMnemonics(event.currentTarget.value)}
+        />
+        <button
+          className="button"
+          onClick={() => {
+            session.addPeer(peerMnemonics);
+            setPeerMnemonics('');
+          }}
+        >
+          {LOCALIZATION.addPeerButton}
+        </button>
+      </div>
     </div>
   );
 };

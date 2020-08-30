@@ -1,11 +1,7 @@
 import React from 'react';
 
 import { useDropzone } from 'react-dropzone';
-
-const LOCALIZATION = {
-  label: (isActive: boolean) =>
-    isActive ? 'Drop the files here...' : "Drag'n'drop some files here, or click to select files"
-};
+import { IconAdd } from './IconAdd';
 
 export type IProps = {
   onDrop: (files: File[]) => void;
@@ -22,9 +18,11 @@ export const FileInput = (props: IProps) => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
   return (
-    <div {...getRootProps({})}>
+    <div {...getRootProps({ className: 'file-input' })}>
       <input {...getInputProps()} />
-      <p>{LOCALIZATION.label(isDragActive)}</p>
+      <div className={`drop-zone${isDragActive ? ' active' : ''}`}>
+        <IconAdd />
+      </div>
     </div>
   );
 };
