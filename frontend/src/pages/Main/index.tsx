@@ -47,7 +47,7 @@ export const MainPage = () => {
         ))}
         <FileInput onDrop={onFilesAdded} />
       </div>
-      <hr />
+      <div className="separator">or</div>
       <div className="peer-form">
         <input
           className="session-code-input input"

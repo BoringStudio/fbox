@@ -94,7 +94,7 @@
     color: $color-font-black;
     background-color: $color-secondary;
 
-    font-weight: bold;
+    font-weight: 600;
     text-decoration: none;
     text-align: center;
 
@@ -117,7 +117,9 @@
 
     .label {
       &--name {
+        width: 100%;
         margin-bottom: 0.5em;
+        overflow-wrap: break-word;
       }
 
       &--size {
@@ -127,12 +129,33 @@
     }
   }
 
-  hr {
-    height: 0.2em;
-    width: 15em;
-    max-width: 100%;
-    border: none;
-    background-color: $color-font-white;
+  .separator {
+    height: 1em;
+    line-height: 1em;
+    width: 1em;
+    font-weight: bold;
+    color: $color-secondary;
+    margin: 1em;
+
+    position: relative;
+
+    &::before,
+    &::after {
+      display: block;
+      position: absolute;
+      right: calc(100% + 1em);
+      top: 50%;
+
+      content: ' ';
+      background-color: $color-secondary;
+      width: 7em;
+      height: 0.2em;
+      border-radius: 3px;
+    }
+
+    &::after {
+      left: calc(100% + 1em);
+    }
   }
 
   .peer-form {
