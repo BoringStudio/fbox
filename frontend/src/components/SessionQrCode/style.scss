@@ -2,13 +2,12 @@
 @import '../../styles/shared/media';
 
 .session-qr-code {
-  max-width: 256px;
+  padding: 0.5em;
+  max-width: calc(256px + 1em);
 
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-
-  padding: 0.5em;
 
   font-size: 1.3em;
   font-weight: bold;
@@ -20,7 +19,16 @@
   }
 
   .raw-code {
+    cursor: pointer;
     text-align: right;
+
+    &:hover {
+      color: lighten($color-font-black, 20);
+    }
+
+    &:active {
+      color: lighten($color-font-black, 30);
+    }
   }
 
   @include media-down(xl) {

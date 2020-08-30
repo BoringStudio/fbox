@@ -1,5 +1,6 @@
 import React from 'react';
 import QRCode from 'react-qr-code';
+import CopyToClipboard from 'react-copy-to-clipboard';
 
 import './style.scss';
 
@@ -18,7 +19,9 @@ export const SessionQrCode = (props: SessionQrCodeProps) => {
       <div className="qr-code">
         <QRCode value={value} fgColor={FG_COLOR} bgColor={BG_COLOR} />
       </div>
-      <div className="raw-code">{value}</div>
+      <CopyToClipboard text={value}>
+        <div className="raw-code">{value}</div>
+      </CopyToClipboard>
     </div>
   );
 };
